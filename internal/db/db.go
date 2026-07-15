@@ -3,10 +3,13 @@ package db
 import (
 	"context"
 	"fmt"
-	"os"
+	_ "embed"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+//go:embed schema.sql
+var schema string
 
 func InitDB(connString string) (*pgxpool.Pool, error){
 	config, parseErr := pgxpool.ParseConfig(connString)
@@ -22,10 +25,6 @@ func InitDB(connString string) (*pgxpool.Pool, error){
 	}
 	if pingErr := pool.Ping(context.Background()); pingErr != nil {
 		return nil, fmt.Errorf("Database is not reachable %v", pingErr)
-	}
-	schema, schemaReadErr := os.ReadFile("/Users/ankit.r/my-projects/realtime-log-aggregation/internal/db/schema.sql")
-	if schemaReadErr != nil{
-		return nil, fmt.Errorf("Error during reading sql schema %v", schemaReadErr)
 	}
 	_, execErr := pool.Exec(context.Background(), string(schema))
 	if execErr != nil {
