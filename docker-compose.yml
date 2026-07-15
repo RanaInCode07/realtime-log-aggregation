@@ -1,0 +1,44 @@
+services:
+  postgresql:
+    image: postgres:15-alpine
+    container_name: pipeline_postgres
+    environment:
+      POSTGRES_USER: rana
+      POSTGRES_PASSWORD: ranapassword
+      POSTGRES_DB: realtime_log_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: pipeline_kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'controller,broker'           # container act as both borker (handles all data) and controller (manages cluster metadata) 
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'    # tells controller node how to tallk to other controlllers to vote on cluster decisions
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:29092,CONTROLLER://0.0.0.0:29093,EXTERNAL://0.0.0.0:9092' # opening the door
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,EXTERNAL://localhost:9092'                  # telling the client what to connect with the door
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT' # this tells kafka how to encrypt the door, plaintext means unauthenticated, unencrypted traffic (no ssl cert, username, or password)
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER' # kafka need explicit clarity on which door is used for administrative management
+      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+    ports: 
+      - "9092:9092"
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: pipeline_kafka_ui
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kafka
+
+
+#Step 1: Traffic enters Port 9092.
+#Step 2: Kafka checks KAFKA_LISTENERS -> "Port 9092 belongs to the EXTERNAL label."
+#Step 3: Kafka checks KAFKA_ADVERTISED_LISTENERS -> "For the EXTERNAL label, hand back the address 'localhost:9092'."
