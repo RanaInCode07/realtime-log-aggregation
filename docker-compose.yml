@@ -9,7 +9,7 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - ./postgres_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
 
   kafka:
     image: confluentinc/cp-kafka:7.4.0
@@ -24,6 +24,9 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER' # kafka need explicit clarity on which door is used for administrative management
       KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
       CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
     ports: 
       - "9092:9092"
 
@@ -37,6 +40,9 @@ services:
       - "8080:8080"
     depends_on:
       - kafka
+
+volumes:
+  pgdata:
 
 
 #Step 1: Traffic enters Port 9092.

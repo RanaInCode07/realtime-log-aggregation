@@ -12,18 +12,24 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 	"github.com/segmentio/kafka-go"
 )
 
-const batchSizeLimit = 1000
+const batchSizeLimit = 50
 const maxWaitTime = 500 * time.Millisecond
 
 func main(){
+    // load the env file on startup
+	// this pull the variables out of the text file and inject them into OS environment
+	if envLoadErr := godotenv.Load(); envLoadErr !=nil{
+		log.Println("No .env file found, relying on system environment variables")
+	}
 	reader:= kafka.NewReader(kafka.ReaderConfig{
 		Brokers: []string{"localhost:9092"},
 		Topic: "system-logs",
 		GroupID: "log-processor-group",
-		MinBytes: 10e3,
+		MinBytes: 1,
 		MaxBytes: 10e6,
 	})
 

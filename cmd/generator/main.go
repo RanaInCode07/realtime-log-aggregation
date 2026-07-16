@@ -42,7 +42,12 @@ func main (){
 		}
 	}()
 
-	for {
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+
+	fmt.Println("Starting log generator at exactly 100 RPS")
+
+	for range ticker.C {
 		event := models.LogEvent{
 			ID: uuid.New().String(),
 			TimeStamp: time.Now(),
@@ -64,10 +69,5 @@ func main (){
 			fmt.Printf("🚀 Successfully batched and shipped %d logs to Kafka! (Last event: [%s] %s)\n", 
 				messageCount, event.Level, event.Service)
 		}
-
-
-		time.Sleep(10 * time.Millisecond)
 	}
-
-
 }
