@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"realtime-log-aggregation/internal/db"
 	"realtime-log-aggregation/internal/models"
 	"time"
@@ -32,7 +33,12 @@ func main(){
 		}
 	}()
 
-	pgxPool, dbErr := db.InitDB("connection_string")
+	connString := os.Getenv("DATABASE_URL")
+	if connString == ""{
+		log.Fatalf("Critical configuration error: DATABASE_URL environment variable is not set")
+	}
+
+	pgxPool, dbErr := db.InitDB(connString)
 	if dbErr != nil {
 		log.Fatalf("Failed to initialize database %v", dbErr)
 	}
