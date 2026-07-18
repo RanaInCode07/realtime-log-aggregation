@@ -66,7 +66,7 @@ func main (){
 		messageCount++
 
 		if messageCount % 100 == 0 {
-			fmt.Printf("🚀 Successfully batched and shipped %d logs to Kafka! (Last event: [%s] %s)\n", 
+			fmt.Printf("Successfully batched and shipped %d logs to Kafka! (Last event: [%s] %s)\n", 
 				messageCount, event.Level, event.Service)
 		}
 	}

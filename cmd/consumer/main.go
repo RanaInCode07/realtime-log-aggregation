@@ -50,6 +50,9 @@ func main(){
 	}
 	defer pgxPool.Close()
 
+    // bufferchannel to handle race between db flush and websocket communication
+	// logBufferChannel := make(chan models.LogEvent, 1000)
+
 	logBatch := make([]models.LogEvent, 0, batchSizeLimit)
 	kafkaBatch := make([]kafka.Message, 0, batchSizeLimit)
 	lastFlush := time.Now()
