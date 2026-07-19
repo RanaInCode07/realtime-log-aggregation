@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"log"
 	"net/http"
 	"realtime-log-aggregation/internal/models"
 
@@ -30,34 +31,46 @@ func NewHub (broadcast chan models.LogEvent) *Hub {
 	return &newHub
 }
 
-func (h *Hub) Run(){
-	// for {
-	// 	select {
-	// 	case Register: 
-	// 		h.Clients.append(h.Register)
-	// 	case Unregister:
-	// 		if h.Clients {
-	// 			delete(h.Clients[h.Unregister], true)
-	// 			h.Clients[h.Unregister].close()
-	// 		}
-	// 	case Broadcast:
-	// 		for client := range h.Clients{
-
-	// 		} 
-	// 	}
-	// }
+func (h *Hub) Run() {
+	for {
+		select {
+		case client:= <-h.Register: 
+			h.Clients[client] = true
+		case client:= <-h.Unregister:
+			if h.Clients[client] {
+				delete(h.Clients, client)
+				client.Close()
+			}
+		case logItem:= <-h.Broadcast:
+			for client := range h.Clients{
+				if writeJsonErr := client.WriteJSON(logItem); writeJsonErr != nil{
+					// go routine to avoid deadlock as channel are unbuffered so it will stuck forever until someone read it
+					// since the hub itself was the only one that could read it and it is current stuck standing in line to send it
+					go func(c *websocket.Conn){
+						h.Unregister <- c
+					}(client)
+				}
+			} 
+		}
+	}
 }
 
-func (h *Hub) HandleWS (w *http.ResponseWriter, r *http.Request) error {
-	// upgrade http server connection to websocket protocol
-	// websocketConn, connErr := Upgrader.Upgrade(w, r, nil)
-	// if connErr != nil {
-	// 	return fmt.Errorf("Http connection upgrade failed, %v", connErr)
-	// }
-	// h.Register <- websocketConn
-	// go func ()  {
-		
-	// }()
-	return nil
+func (h *Hub) HandleWS (w http.ResponseWriter, r *http.Request) {
+	//upgrade http server connection to websocket protocol
+	websocketConn, connErr := Upgrader.Upgrade(w, r, nil)
+	if connErr != nil {
+		log.Printf("Error during upgrading http connection to websocket protocol, %v \n", connErr)
+		return
+	}
+	h.Register <- websocketConn
+	go func ()  {
+		for {
+			_, _, err := websocketConn.ReadMessage()
+		    if err != nil {
+			h.Unregister <- websocketConn
+			break
+		}
+		}
+	}()
 }
 
