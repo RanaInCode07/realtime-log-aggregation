@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"realtime-log-aggregation/internal/db"
 	"realtime-log-aggregation/internal/models"
+	"realtime-log-aggregation/internal/ws"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -50,8 +52,15 @@ func main(){
 	}
 	defer pgxPool.Close()
 
-    // bufferchannel to handle race between db flush and websocket communication
-	// logBufferChannel := make(chan models.LogEvent, 1000)
+    //bufferchannel to handle race between db flush and websocket communication
+	logBufferChannel := make(chan models.LogEvent, 1000)
+	hub := ws.NewHub(logBufferChannel)
+	go hub.Run()
+
+	http.HandleFunc("/ws", hub.HandleWS)
+	go func(){
+		log.Fatal(http.ListenAndServe(":8082", nil))
+	}()
 
 	logBatch := make([]models.LogEvent, 0, batchSizeLimit)
 	kafkaBatch := make([]kafka.Message, 0, batchSizeLimit)
@@ -76,6 +85,10 @@ func main(){
 				log.Fatalf("Db insertion failure %v", dbErr)
 			} 
 			log.Printf("Successfully flushed logs to postgres, row inserted: %v", rowsInserted)
+			for _, logItem := range logBatch{
+				logBufferChannel <- logItem
+			}
+			log.Printf("Successfully pushed logs to buffer channel for websocket broadcasting")
 			if commitErr := reader.CommitMessages(context.Background(), kafkaBatch...); commitErr != nil{
 				log.Printf("Error during committing the batch offset %v", commitErr)
 			}
